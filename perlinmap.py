@@ -2,6 +2,7 @@ import noise
 import math
 import numpy as np
 from PIL import Image
+from scipy.special import expit
 
 lightblue = [0,191,255]
 blue = [65,105,225]
@@ -24,7 +25,7 @@ def prep_world(world):
     world = norm(world)
     return world
 
-def make_world(shape = (1024,1024), scale = 100, octaves = 6, persistence = 0.5, lacunarity = 2.0, seed = 1):
+def make_world(shape = (2048, 2048), scale = 100, octaves = 6, persistence = 0.5, lacunarity = 2.0, seed = 1):
     world = np.zeros(shape)
     for i in range(shape[0]):
         for j in range(shape[1]):
@@ -38,7 +39,7 @@ def make_world(shape = (1024,1024), scale = 100, octaves = 6, persistence = 0.5,
                                         base=seed)
     return world
 
-def add_color(world, shape = (1024, 1024)):
+def add_color(world, shape = (2048, 2048)):
     threshold = 50
     color_world = np.zeros(world.shape+(3,))
 
@@ -61,29 +62,7 @@ def add_color(world, shape = (1024, 1024)):
 
     return color_world
 
-def make_mask(shape = (1024, 1024)):
-    a,b = shape[0]/2, shape[1]/2
-    n = 1024
-    r = 125
-    y,x = np.ogrid[-a:n-a, -b:n-b]
-    # creates a mask with True False values
-    # at indices
-    mask = x**2+y**2 <= r**2
-
-    return mask
-
-def make_island(color_world, shape = (1024, 1024)):
-    mask = make_mask()
-
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            if mask[i][j]:
-                island_world[i][j] = color_world[i][j]
-            else:
-                island_world[i][j] = black
-    return island_world
-
-def make_circular_gradient(world, shape = (1024, 1024)):
+def make_circular_gradient(world, shape = (2048, 2048)):
     center_x, center_y = shape[1] // 2, shape[0] // 2
     circle_grad = np.zeros_like(world)
 
@@ -91,7 +70,7 @@ def make_circular_gradient(world, shape = (1024, 1024)):
         for x in range(world.shape[1]):
             distx = abs(x - center_x)
             disty = abs(y - center_y)
-            dist = math.sqrt(distx*distx + disty*disty)
+            dist = expit(math.sqrt(distx*distx + disty*disty))
             circle_grad[y][x] = dist
 
     # get it between -1 and 1
@@ -103,7 +82,7 @@ def make_circular_gradient(world, shape = (1024, 1024)):
 
     return circle_grad
 
-def add_noise(world, circle_grad, shape = (1024, 1024)):
+def add_noise(world, circle_grad, shape = (2048, 2048)):
     world_noise = np.zeros_like(world)
 
     for i in range(shape[0]):
@@ -115,16 +94,13 @@ def add_noise(world, circle_grad, shape = (1024, 1024)):
 
 
 if __name__ == '__main__':
-    seed = np.random.randint(0,100)
-    print(seed)
+    seed = np.random.randint(0,1000)
+
     world = make_world(seed = seed)
-    color_world = add_color(world).astype(np.uint8)
-    island_world = np.zeros_like(color_world)
-    # Image.fromarray(prep_world(world)).show()
-    # Image.fromarray(color_world,'RGB').show()
-    # Image.fromarray(prep_world(make_circular_gradient(world))).show()
-    # Image.fromarray(prep_world(add_noise(world, make_circular_gradient(world)))).show()
 
     island_world_grad = add_color(prep_world(add_noise(world, make_circular_gradient(world)))).astype(np.uint8)
-    Image.fromarray(island_world_grad,'RGB').save("map.jpg")
+
+    Image.fromarray(prep_world(add_noise(world, make_circular_gradient(world)))).show()
+    # Image.fromarray(island_world_grad,'RGB').save("map.png")
+    # Image.fromarray(island_world_grad,'RGB').show()
 
